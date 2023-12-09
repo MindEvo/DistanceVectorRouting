@@ -1,7 +1,7 @@
 class RoutingTable:
     def __init__(self):
         self.table = {}  # Format: {destination: (next_hop, cost)}
-        self.id = 99999  # default garbage value
+        self.own_id = 99999  # default garbage value
 
     def update_route(self, destination, next_hop, cost):
         self.table[destination] = (next_hop, cost)
@@ -13,12 +13,20 @@ class RoutingTable:
     def get_next_hop(self, destination):
         return self.table.get(destination, (None, float('inf')))[0]
 
-    def update_from_neighbor(self, neighbor_id, neighbor_table):
+    def update_from_neighbor(self, sender_id, neighbor_routing_table):
         updated = False
-        for destination, (next_hop, cost) in neighbor_table.items():
-            if destination != self.own_id and (destination not in self.table or cost + 1 < self.table[destination][1]):
-                self.table[destination] = (neighbor_id, cost + 1)
-                updated = True
+        for destination, (next_hop, cost) in neighbor_routing_table.items():
+            if destination != self.own_id and destination in self.table:
+                total_cost = cost + self.table[sender_id][1]  # Add cost to reach the neighbor
+
+                current_route = self.table[destination]
+                is_better_route = total_cost < current_route[1]
+                is_same_next_hop = current_route[0] == sender_id
+
+                if is_better_route or is_same_next_hop:
+                    self.table[destination] = (sender_id, total_cost)
+                    updated = True
+
         return updated
 
     def print_table(self):

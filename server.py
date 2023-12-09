@@ -1,3 +1,4 @@
+import select
 import socket
 import threading
 import json
@@ -11,7 +12,7 @@ class Server:
         self.port = my_port
         self.update_interval = update_interval
         self.routing_table = RoutingTable()
-        self.routing_table.id = my_id
+        self.routing_table.own_id = my_id
         self.neighbors = {n_id: {'ip': ip, 'port': port, 'cost': cost} for n_id, (ip, port, cost) in neighbors.items()}
         for n_id, info in self.neighbors.items():
             self.routing_table.update_route(n_id, n_id, info['cost'])
@@ -19,6 +20,7 @@ class Server:
         self.packet_count = 0
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(('0.0.0.0', self.port))
+        # self.socket.setblocking(False)
         self.running = True
 
     def run(self):
@@ -36,9 +38,16 @@ class Server:
     def listen_for_messages(self):
         while self.running:
             try:
-                message, addr = self.socket.recvfrom(1024)
-                self.process_message(message, addr)
-            except socket.error:
+                read_sockets, _, _ = select.select([self.socket], [], [], 0)
+                for sock in read_sockets:
+                    if sock == self.socket:
+                        message, addr = sock.recvfrom(8192)  # Adjust buffer size as needed
+                        self.process_message(message, addr)
+            except socket.error as e:
+                print(f"Error reading sockets: {e}")
+                break
+            except Exception as e:
+                print(f"Error receiving message: {e}")
                 break
 
     def send_periodic_updates(self):
@@ -48,11 +57,19 @@ class Server:
 
     def send_update_to_neighbors(self):
         try:
-            update_message = json.dumps(self.routing_table.table).encode()
+            message = {
+                'sender_id': self.id,
+                'routing_table': self.routing_table.table
+            }
+            update_message = json.dumps(message).encode()
+
             for neighbor_id, neighbor_info in self.neighbors.items():
                 ip = neighbor_info['ip']
-                port = int(neighbor_info['port'])  # Convert port to integer                
-                self.socket.sendto(update_message, (ip, port))
+                port = int(neighbor_info['port'])
+                try:
+                    self.socket.sendto(update_message, (ip, port))
+                except socket.error as e:
+                    print(f"Error sending to {neighbor_id} at {ip}:{port}: {e}")
         except Exception as e:
             print(f"Error sending update to neighbors: {e}")
 
@@ -60,6 +77,7 @@ class Server:
         try:
             # Decode the message from JSON
             update = json.loads(message.decode())
+            # print(f"Received update from {addr}: {update}")  # Debugging output
 
             # Extract sender ID and their routing table from the message
             sender_id = update['sender_id']
@@ -116,6 +134,7 @@ class Server:
             except ValueError:
                 print("Error: Invalid cost value.")
                 return
+        self.send_update_to_neighbors()
 
         # Identify the neighbor's ID and update the cost in the neighbors dictionary
         neighbor_id = server_id2 if self.id == server_id1 else server_id1

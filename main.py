@@ -35,6 +35,7 @@ def main():
 
         server = Server(MY_ID, MY_IP, MY_PORT, UPDATE_INTERVAL, NEIGHBORS)
         server.run()
+        
     except:
         print(f"Invalid command line argument.")
 

@@ -1,6 +1,7 @@
 import os
 import sys
-from server import Server
+
+from server import *
 from utils import *
 
 def main():

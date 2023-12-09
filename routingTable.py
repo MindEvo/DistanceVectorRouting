@@ -1,6 +1,7 @@
 class RoutingTable:
     def __init__(self):
         self.table = {}  # Format: {destination: (next_hop, cost)}
+        self.id = 99999  # default garbage value
 
     def update_route(self, destination, next_hop, cost):
         self.table[destination] = (next_hop, cost)

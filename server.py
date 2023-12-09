@@ -11,6 +11,7 @@ class Server:
         self.port = my_port
         self.update_interval = update_interval
         self.routing_table = RoutingTable()
+        self.routing_table.id = my_id
         self.neighbors = neighbors
         self.disabled_links = set()
         self.packet_count = 0
@@ -49,39 +50,22 @@ class Server:
             self.socket.sendto(update_message, (ip, port))
 
     def process_message(self, message, addr):
-        self.packet_count += 1
-        # Process incoming message (either a routing update or a user message)
         try:
-            # Decode the message and load it as JSON
-            message_data = json.loads(message.decode('utf-8'))
-            
-            # Extract sender information (assuming message includes sender's server ID)
-            sender_id = message_data['sender_id']
-            
-            # Check if the message is a routing update
-            if 'routing_table' in message_data:
-                self.update_routing_table_from_message(sender_id, message_data['routing_table'])
+            # Decode the message from JSON
+            update = json.loads(message.decode())
+
+            # Extract sender ID and their routing table from the message
+            sender_id = update['sender_id']
+            neighbor_routing_table = update['routing_table']
+
+            # Update this server's routing table with the received information
+            if self.routing_table.update_from_neighbor(sender_id, neighbor_routing_table):
+                print(f"Routing table updated from neighbor: {sender_id}")
+                # Optionally, further actions such as propagating updates can be added here
+            self.packet_count += 1
 
         except json.JSONDecodeError:
-            print("Received an invalid message format.")
-        except KeyError:
-            print("Received message is missing required fields.")
-
-    def update_routing_table_from_message(self, sender_id, incoming_routing_table):
-        # updated = False
-        for destination, (next_hop, cost) in incoming_routing_table.items():
-            if destination != self.id:
-                # Calculate the new cost to the destination through the sender
-                new_cost = cost + self.routing_table.get_cost_to(sender_id)
-
-                # Update the routing table if the new path is better
-                if self.routing_table.update_route_if_better(destination, sender_id, new_cost):
-                    updated = True
-
-        # if updated:
-        #     # Code to handle what happens when routing table is updated, like sending updates to neighbors
-        #     pass
-
+            print("Invalid message format received.")
 
     def handle_command(self, command):
         parts = command.split()

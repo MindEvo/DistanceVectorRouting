@@ -21,6 +21,13 @@ class RoutingTable:
                 updated = True
         return updated
 
+    def print_table(self):
+        print("Routing Table:")
+        print("Destination ID | Next Hop ID | Cost")
+        print("-----------------------------------")
+        for destination, (next_hop, cost) in self.table.items():
+            print(f"{destination:<14} | {next_hop:<11} | {cost}")
+
     def __str__(self):
         return "\n".join([f"Destination: {dest}, Next Hop: {nh}, Cost: {cost}" for dest, (nh, cost) in self.table.items()])
 

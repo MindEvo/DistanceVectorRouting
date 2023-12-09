@@ -12,24 +12,29 @@ def main():
     try:
         path_to_file = os.path.join(os.path.dirname(__file__), "topology", sys.argv[3])
         servers, neighbors = parse_topology_file(path_to_file)
-        update_interval = int(sys.argv[5])
 
-        print(servers)
-        print(neighbors)
+        MY_ID = int(sys.argv[3][0])
+        # print(f"ID: {MY_ID}")
+        MY_IP = servers[int(sys.argv[3][0])]['ip']
+        # print(f"IP: {MY_IP}")
+        MY_PORT = servers[int(sys.argv[3][0])]['port']
+        # print(f"PORT: {MY_PORT}")
+        UPDATE_INTERVAL = int(sys.argv[5])
+        # print(f"UPDATE INTERVAL: {UPDATE_INTERVAL}")
+        NEIGHBORS = {}
+        for (src_id, dest_id), cost in neighbors.items():
+            if src_id == MY_ID:
+                neighbor_id = dest_id
+            elif dest_id == MY_ID:
+                neighbor_id = src_id
+            else:
+                continue
+            if neighbor_id in servers:
+                NEIGHBORS[neighbor_id] = (servers[neighbor_id]['ip'], servers[neighbor_id]['port'], cost)
+        # print(f"NEIGHBORS: {NEIGHBORS}")
 
-        print(servers[1])
-
-        # MY_ID = 1
-        # MY_IP = '127.0.0.1'
-        # MY_PORT = 5000
-        # UPDATE_INTERVAL = 30  # seconds
-        # NEIGHBORS = {
-        #     2: ('127.0.0.1', 5001),
-        #     3: ('127.0.0.1', 5002)
-        # }
-
-        # server = Server(MY_ID, MY_IP, MY_PORT, UPDATE_INTERVAL, NEIGHBORS)
-        # server.run()
+        server = Server(MY_ID, MY_IP, MY_PORT, UPDATE_INTERVAL, NEIGHBORS)
+        server.run()
     except:
         print(f"Invalid command line argument.")
 

@@ -12,11 +12,13 @@ class Server:
         self.update_interval = update_interval
         self.routing_table = RoutingTable()
         self.routing_table.id = my_id
-        self.neighbors = neighbors
+        self.neighbors = {n_id: {'ip': ip, 'port': port, 'cost': cost} for n_id, (ip, port, cost) in neighbors.items()}
+        for n_id, info in self.neighbors.items():
+            self.routing_table.update_route(n_id, n_id, info['cost'])
         self.disabled_links = set()
         self.packet_count = 0
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.bind((self.ip, self.port))
+        self.socket.bind(('0.0.0.0', self.port))
         self.running = True
 
     def run(self):
@@ -46,8 +48,11 @@ class Server:
 
     def send_update_to_neighbors(self):
         update_message = json.dumps(self.routing_table.table).encode()
-        for neighbor_id, (ip, port) in self.neighbors.items():  
+        for neighbor_id, neighbor_info in self.neighbors.items():
+            ip = neighbor_info['ip']
+            port = neighbor_info['port']
             self.socket.sendto(update_message, (ip, port))
+
 
     def process_message(self, message, addr):
         try:
@@ -115,9 +120,8 @@ class Server:
         # Display the number of received routing packets
         print(f"Number of routing packets received: {self.packet_count}")
 
-
     def display_routing_table(self):
-        print(self.routing_table)
+        self.routing_table.print_table()
 
     def disable_link(self, server_id):
         # Disable the link to the given server

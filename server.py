@@ -47,12 +47,14 @@ class Server:
             time.sleep(self.update_interval)
 
     def send_update_to_neighbors(self):
-        update_message = json.dumps(self.routing_table.table).encode()
-        for neighbor_id, neighbor_info in self.neighbors.items():
-            ip = neighbor_info['ip']
-            port = neighbor_info['port']
-            self.socket.sendto(update_message, (ip, port))
-
+        try:
+            update_message = json.dumps(self.routing_table.table).encode()
+            for neighbor_id, neighbor_info in self.neighbors.items():
+                ip = neighbor_info['ip']
+                port = int(neighbor_info['port'])  # Convert port to integer                
+                self.socket.sendto(update_message, (ip, port))
+        except Exception as e:
+            print(f"Error sending update to neighbors: {e}")
 
     def process_message(self, message, addr):
         try:
@@ -86,6 +88,17 @@ class Server:
             self.disable_link(int(parts[1]))
         elif parts[0] == 'crash':
             self.crash()
+        elif parts[0] == 'help':
+            print("""
+            Available Commands:
+            - help: Display this help message.
+            - update <server-ID1> <server-ID2> <Link Cost>: Update the cost of the link between two servers.
+            - step: Send a routing update to neighbors immediately.
+            - packets: Display the number of routing packets received since the last check.
+            - display: Display the current routing table.
+            - disable <server-ID>: Disable the link to a specified server.
+            - crash: Simulate a server crash by closing all connections.
+        """)
         else:
             print("Unknown command")
 
@@ -107,14 +120,14 @@ class Server:
         # Identify the neighbor's ID and update the cost in the neighbors dictionary
         neighbor_id = server_id2 if self.id == server_id1 else server_id1
         if neighbor_id in self.neighbors:
-            self.neighbors[neighbor_id] = new_cost
+            self.neighbors[neighbor_id]['cost'] = new_cost
             print(f"Link cost updated: Server {self.id} to Server {neighbor_id} is now {new_cost}")
 
         # Update the routing table accordingly
         self.routing_table.update_route(neighbor_id, neighbor_id, new_cost)
 
         # Optionally, trigger an immediate routing update to neighbors
-        self.send_update_to_neighbors()
+        # self.send_update_to_neighbors()
 
     def display_packets(self):
         # Display the number of received routing packets

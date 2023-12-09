@@ -1,13 +1,25 @@
 from server import *
 
 def parse_topology_file(file_name):
-    configurations = []
     with open(file_name, 'r') as file:
         lines = file.readlines()
-        for line in lines:
-            parts = line.strip().split()
-            print(parts)
-            if len(parts) == 3:
-                id, ip, port = int(parts[0]), parts[1], int(parts[2])
-                configurations.append((id, ip, port))
-    return configurations
+
+    total_servers = int(lines[0].strip())
+    total_neighbors = int(lines[1].strip())
+
+    servers = {}
+    neighbors = {}
+
+    # Read server details
+    for i in range(2, 2 + total_servers):
+        parts = lines[i].split()
+        server_id, ip, port = int(parts[0]), parts[1], int(parts[2])
+        servers[server_id] = {'ip': ip, 'port': port}
+
+    # Read neighbor links and costs
+    for i in range(2 + total_servers, 2 + total_servers + total_neighbors):
+        parts = lines[i].split()
+        src_id, dest_id, cost = int(parts[0]), int(parts[1]), int(parts[2])
+        neighbors[(src_id, dest_id)] = cost
+
+    return servers, neighbors

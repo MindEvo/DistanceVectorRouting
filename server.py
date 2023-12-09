@@ -11,7 +11,9 @@ class Server:
         self.port = my_port
         self.update_interval = update_interval
         self.routing_table = RoutingTable()
-        self.neighbors = neighbors  # Format: {neighbor_id: (ip, port)}
+        self.neighbors = neighbors
+        self.disabled_links = set()
+        self.packet_count = 0
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((self.ip, self.port))
         self.running = True
@@ -43,12 +45,43 @@ class Server:
 
     def send_update_to_neighbors(self):
         update_message = json.dumps(self.routing_table.table).encode()
-        for neighbor_id, (ip, port) in self.neighbors.items():
+        for neighbor_id, (ip, port) in self.neighbors.items():  
             self.socket.sendto(update_message, (ip, port))
 
     def process_message(self, message, addr):
+        self.packet_count += 1
         # Process incoming message (either a routing update or a user message)
-        pass
+        try:
+            # Decode the message and load it as JSON
+            message_data = json.loads(message.decode('utf-8'))
+            
+            # Extract sender information (assuming message includes sender's server ID)
+            sender_id = message_data['sender_id']
+            
+            # Check if the message is a routing update
+            if 'routing_table' in message_data:
+                self.update_routing_table_from_message(sender_id, message_data['routing_table'])
+
+        except json.JSONDecodeError:
+            print("Received an invalid message format.")
+        except KeyError:
+            print("Received message is missing required fields.")
+
+    def update_routing_table_from_message(self, sender_id, incoming_routing_table):
+        # updated = False
+        for destination, (next_hop, cost) in incoming_routing_table.items():
+            if destination != self.id:
+                # Calculate the new cost to the destination through the sender
+                new_cost = cost + self.routing_table.get_cost_to(sender_id)
+
+                # Update the routing table if the new path is better
+                if self.routing_table.update_route_if_better(destination, sender_id, new_cost):
+                    updated = True
+
+        # if updated:
+        #     # Code to handle what happens when routing table is updated, like sending updates to neighbors
+        #     pass
+
 
     def handle_command(self, command):
         parts = command.split()
@@ -68,35 +101,51 @@ class Server:
             print("Unknown command")
 
     def update_link_cost(self, server_id1, server_id2, new_cost):
-        # Update the link cost in the routing table
-        pass
+        # Check if this server is involved in the update
+        if self.id not in [server_id1, server_id2]:
+            return
+
+        # Convert new_cost to an appropriate format (integer or infinity)
+        if new_cost.lower() == 'inf':
+            new_cost = float('inf')
+        else:
+            try:
+                new_cost = int(new_cost)
+            except ValueError:
+                print("Error: Invalid cost value.")
+                return
+
+        # Identify the neighbor's ID and update the cost in the neighbors dictionary
+        neighbor_id = server_id2 if self.id == server_id1 else server_id1
+        if neighbor_id in self.neighbors:
+            self.neighbors[neighbor_id] = new_cost
+            print(f"Link cost updated: Server {self.id} to Server {neighbor_id} is now {new_cost}")
+
+        # Update the routing table accordingly
+        self.routing_table.update_route(neighbor_id, neighbor_id, new_cost)
+
+        # Optionally, trigger an immediate routing update to neighbors
+        self.send_update_to_neighbors()
 
     def display_packets(self):
         # Display the number of received routing packets
-        pass
+        print(f"Number of routing packets received: {self.packet_count}")
+
 
     def display_routing_table(self):
         print(self.routing_table)
 
     def disable_link(self, server_id):
         # Disable the link to the given server
-        pass
+        if server_id in self.neighbors and server_id not in self.disabled_links:
+            # Set the link cost to infinity in the routing table
+            self.routing_table.update_route(server_id, None, float('inf'))
+            self.disabled_links.add(server_id)
+            print(f"Link to server {server_id} has been disabled.")
+        else:
+            print(f"Error: No direct link to server {server_id} or it's already disabled.")
 
     def crash(self):
         # Simulate a server crash
         self.running = False
         self.socket.close()
-
-# Example of creating a server instance
-if __name__ == "__main__":
-    MY_ID = 1
-    MY_IP = '127.0.0.1'
-    MY_PORT = 5000
-    UPDATE_INTERVAL = 30  # seconds
-    NEIGHBORS = {
-        2: ('127.0.0.1', 5001),
-        3: ('127.0.0.1', 5002)
-    }
-
-    server = Server(MY_ID, MY_IP, MY_PORT, UPDATE_INTERVAL, NEIGHBORS)
-    server.run()

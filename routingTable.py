@@ -24,6 +24,6 @@ class RoutingTable:
         return "\n".join([f"Destination: {dest}, Next Hop: {nh}, Cost: {cost}" for dest, (nh, cost) in self.table.items()])
 
 # Example usage
-routing_table = RoutingTable()
-routing_table.update_route(destination="ClientB", next_hop="ClientA", cost=1)
-print(routing_table)
+# routing_table = RoutingTable()
+# routing_table.update_route(destination="ClientB", next_hop="ClientA", cost=1)
+# print(routing_table)

@@ -4,7 +4,9 @@ class RoutingTable:
         self.own_id = 99999  # default garbage value
 
     def update_route(self, destination, next_hop, cost):
+        # print(f"old: {self.table}")
         self.table[destination] = (next_hop, cost)
+        # print(f"new: {self.table}")
 
     def remove_route(self, destination):
         if destination in self.table:
@@ -15,26 +17,51 @@ class RoutingTable:
 
     def update_from_neighbor(self, sender_id, neighbor_routing_table):
         updated = False
+
+        if sender_id not in self.table:
+            return False  # Sender not in routing table, so no update is possible
+        cost_to_sender = self.table[sender_id][1]
+
         for destination, (next_hop, cost) in neighbor_routing_table.items():
-            if destination != self.own_id and destination in self.table:
-                total_cost = cost + self.table[sender_id][1]  # Add cost to reach the neighbor
+            destination = int(destination)
+            
+            if destination == self.own_id:
+                continue  # Skip self
 
+            total_cost = cost + cost_to_sender  # Calculate total cost via this neighbor
+
+            # Check if this route should be updated
+            if destination in self.table:
                 current_route = self.table[destination]
-                is_better_route = total_cost < current_route[1]
-                is_same_next_hop = current_route[0] == sender_id
+                current_cost = current_route[1]
 
-                if is_better_route or is_same_next_hop:
+                # Update only if the route is better or if it's the same next hop
+                if total_cost < current_cost:
+                    # Update if the new route is cheaper or the next hop is the same
                     self.table[destination] = (sender_id, total_cost)
                     updated = True
 
-        return updated
+                # Handle the case where the neighbor's route to the destination is now unreachable
+                elif current_route[0] == sender_id and cost == float('inf'):
+                    self.table[destination] = (None, float('inf'))
+                    print(self.table)
+                    updated = True
+
+            else:
+                # If the destination is not in the table, consider adding it
+                self.table[destination] = (sender_id, total_cost)
+                updated = True
+
+        return updated  
 
     def print_table(self):
         print("Routing Table:")
         print("Destination ID | Next Hop ID | Cost")
         print("-----------------------------------")
         for destination, (next_hop, cost) in self.table.items():
-            print(f"{destination:<14} | {next_hop:<11} | {cost}")
+            next_hop_str = str(next_hop) if next_hop is not None else 'None'
+            cost_str = str(cost) if cost != float('inf') else 'inf'
+            print(f"{destination:<14} | {next_hop_str:<11} | {cost_str}")
 
     def __str__(self):
         return "\n".join([f"Destination: {dest}, Next Hop: {nh}, Cost: {cost}" for dest, (nh, cost) in self.table.items()])

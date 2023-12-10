@@ -14,13 +14,9 @@ def main():
         servers, neighbors = parse_topology_file(path_to_file)
 
         MY_ID = int(sys.argv[3][0])
-        # print(f"ID: {MY_ID}")
         MY_IP = servers[int(sys.argv[3][0])]['ip']
-        # print(f"IP: {MY_IP}")
         MY_PORT = servers[int(sys.argv[3][0])]['port']
-        # print(f"PORT: {MY_PORT}")
         UPDATE_INTERVAL = int(sys.argv[5])
-        # print(f"UPDATE INTERVAL: {UPDATE_INTERVAL}")
         NEIGHBORS = {}
         for (src_id, dest_id), cost in neighbors.items():
             if src_id == MY_ID:
@@ -31,7 +27,6 @@ def main():
                 continue
             if neighbor_id in servers:
                 NEIGHBORS[neighbor_id] = (servers[neighbor_id]['ip'], servers[neighbor_id]['port'], cost)
-        # print(f"NEIGHBORS: {NEIGHBORS}")
 
         server = Server(MY_ID, MY_IP, MY_PORT, UPDATE_INTERVAL, NEIGHBORS)
         server.run()

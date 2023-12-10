@@ -20,7 +20,6 @@ class Server:
         self.packet_count = 0
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(('0.0.0.0', self.port))
-        # self.socket.setblocking(False)
         self.running = True
 
     def run(self):
@@ -40,12 +39,8 @@ class Server:
             try:
                 read_sockets, _, _ = select.select([self.socket], [], [], 0)
                 for sock in read_sockets:
-                    # print("reading sockets")
                     if sock == self.socket:
                         message, addr = sock.recvfrom(8192)  # Adjust buffer size as needed
-                        # print(f"message: {message}")
-                        # print(f"addr: {addr}")
-                        # print("calling process_message")
                         self.process_message(message, addr)
             except socket.error as e:
                 print(f"Error reading sockets: {e}")
@@ -65,16 +60,13 @@ class Server:
                 'sender_id': self.id,
                 'routing_table': self.routing_table.table
             }
-            # print(f"message: {message}")
             update_message = json.dumps(message).encode()
-            # print(f"updateMessage: {update_message}")
 
             for neighbor_id, neighbor_info in self.neighbors.items():
                 ip = neighbor_info['ip']
                 port = int(neighbor_info['port'])
                 try:
                     self.socket.sendto(update_message, (ip, port))
-                    # print("message sent")
                 except socket.error as e:
                     print(f"Error sending to {neighbor_id} at {ip}:{port}: {e}")
         except Exception as e:
@@ -93,7 +85,6 @@ class Server:
             # Update this server's routing table with the received information
             if self.routing_table.update_from_neighbor(sender_id, neighbor_routing_table):
                 print(f"Routing table updated from neighbor: {sender_id}")
-                # Optionally, further actions such as propagating updates can be added here
 
             self.packet_count += 1
 
@@ -134,32 +125,24 @@ class Server:
             return
 
         # Convert new_cost to an appropriate format (integer or infinity)
-        # print("Converting to int")
         if new_cost.lower() == 'inf':
             new_cost = float('inf')
         else:
             try:
                 new_cost = int(new_cost)
-                # print(f"new cost: {new_cost}")
             except ValueError:
                 print("Error: Invalid cost value.")
                 return
 
         # Identify the neighbor's ID and update the cost in the neighbors dictionary
         neighbor_id = server_id2 if self.id == server_id1 else server_id1
-        # print(f"neighbor id: {neighbor_id}")
         if neighbor_id in self.neighbors:
-            # print(f"old: {self.neighbors[neighbor_id]['cost']}")
             self.neighbors[neighbor_id]['cost'] = new_cost
-            # print(f"new: {self.neighbors[neighbor_id]['cost']}")
-            # print(f"Link cost updated: Server {self.id} to Server {neighbor_id} is now {new_cost}")
 
         # Update the routing table accordingly
-        # print("calling update_route on routing_table")
         self.routing_table.update_route(neighbor_id, neighbor_id, new_cost)
 
-        # Optionally, trigger an immediate routing update to neighbors
-        # print("calling send_update_to_neighbors")
+        # Trigger an immediate routing update to neighbors
         self.send_update_to_neighbors()
 
     def display_packets(self):
